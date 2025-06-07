@@ -1,0 +1,192 @@
+const CHIP8_MEMORY: usize = 4096;
+const CHIP8_VIDEO_WIDTH: usize = 64;
+const CHIP8_VIDEO_HEIGHT: usize = 32;
+const STACK_HEIGHT: usize = 16;
+const REGISTERS_V: usize = 16;
+const KEYPAD_SIZE: usize = 16;
+
+const FONTSET: [u8; 80] = [
+    0xF0, 0x90, 0x90, 0x90, 0xF0, 0x20, 0x60, 0x20, 0x20, 0x70, 0xF0, 0x10, 0xF0, 0x80, 0xF0, 0xF0,
+    0x10, 0xF0, 0x10, 0xF0, 0x90, 0x90, 0xF0, 0x10, 0x10, 0xF0, 0x80, 0xF0, 0x10, 0xF0, 0xF0, 0x80,
+    0xF0, 0x90, 0xF0, 0xF0, 0x10, 0x20, 0x40, 0x40, 0xF0, 0x90, 0xF0, 0x90, 0xF0, 0xF0, 0x90, 0xF0,
+    0x10, 0xF0, 0xF0, 0x90, 0xF0, 0x90, 0x90, 0xE0, 0x90, 0xE0, 0x90, 0xE0, 0xF0, 0x80, 0x80, 0x80,
+    0xF0, 0xE0, 0x90, 0x90, 0x90, 0xE0, 0xF0, 0x80, 0xF0, 0x80, 0xF0, 0xF0, 0x80, 0xF0, 0x80, 0x80,
+];
+
+pub struct Chip8 {
+    video: [[u8; CHIP8_VIDEO_WIDTH]; CHIP8_VIDEO_HEIGHT], // VRAM
+    video_draw: bool,                                     // Redraw frame
+    memory: [u8; CHIP8_MEMORY],                           // RAM
+    stack: [u16; STACK_HEIGHT],                           // Stack
+    v: [u8; REGISTERS_V],                                 // General purpose registers
+    i: u16,                                               // I register (store memory addresses)
+    pc: u16,                     // Program Counter (store currently executing address)
+    sp: u8,                      // Stack Pointer (store topmost level of stack)
+    dt: u8,                      // Delay Timer
+    st: u8,                      // Sound Timer
+    keypad: [bool; KEYPAD_SIZE], // Keypad (16 buttons true or false)
+}
+
+impl Chip8 {
+    fn new() -> Result<Chip8, String> {
+        let mut chip8 = Chip8 {
+            video: [[0; CHIP8_VIDEO_WIDTH]; CHIP8_VIDEO_HEIGHT],
+            video_draw: false,
+            memory: [0; CHIP8_MEMORY],
+            stack: [0; STACK_HEIGHT],
+            v: [0; REGISTERS_V],
+            i: 0,
+            pc: 0,
+            sp: 0,
+            dt: 0,
+            st: 0,
+            keypad: [false; KEYPAD_SIZE],
+        };
+
+        for i in 0..FONTSET.len() {
+            chip8.memory[i] = FONTSET[0];
+        }
+
+        Ok(chip8)
+    }
+
+    /// 0nnn - SYS addr  
+    /// Jump to a machine code routine at nnn (ignored by modern interpreters).
+    fn op_0nnn() {}
+
+    /// 00E0 - CLS  
+    /// Clear the display.
+    fn op_00E0() {}
+
+    /// 00EE - RET  
+    /// Return from a subroutine.
+    fn op_00EE() {}
+
+    /// 1nnn - JP addr  
+    /// Jump to location nnn.
+    fn op_1nnn() {}
+
+    /// 2nnn - CALL addr  
+    /// Call subroutine at nnn.
+    fn op_2nnn() {}
+
+    /// 3xkk - SE Vx, byte  
+    /// Skip next instruction if Vx == kk.
+    fn op_3xkk() {}
+
+    /// 4xkk - SNE Vx, byte  
+    /// Skip next instruction if Vx != kk.
+    fn op_4xkk() {}
+
+    /// 5xy0 - SE Vx, Vy  
+    /// Skip next instruction if Vx == Vy.
+    fn op_5xy0() {}
+
+    /// 6xkk - LD Vx, byte  
+    /// Set Vx = kk.
+    fn op_6xkk() {}
+
+    /// 7xkk - ADD Vx, byte  
+    /// Set Vx = Vx + kk.
+    fn op_7xkk() {}
+
+    /// 8xy0 - LD Vx, Vy  
+    /// Set Vx = Vy.
+    fn op_8xy0() {}
+
+    /// 8xy1 - OR Vx, Vy  
+    /// Set Vx = Vx OR Vy.
+    fn op_8xy1() {}
+
+    /// 8xy2 - AND Vx, Vy  
+    /// Set Vx = Vx AND Vy.
+    fn op_8xy2() {}
+
+    /// 8xy3 - XOR Vx, Vy  
+    /// Set Vx = Vx XOR Vy.
+    fn op_8xy3() {}
+
+    /// 8xy4 - ADD Vx, Vy  
+    /// Set Vx = Vx + Vy, set VF = carry.
+    fn op_8xy4() {}
+
+    /// 8xy5 - SUB Vx, Vy  
+    /// Set Vx = Vx - Vy, set VF = NOT borrow.
+    fn op_8xy5() {}
+
+    /// 8xy6 - SHR Vx {, Vy}  
+    /// Set Vx = Vx >> 1.
+    fn op_8xy6() {}
+
+    /// 8xy7 - SUBN Vx, Vy  
+    /// Set Vx = Vy - Vx, set VF = NOT borrow.
+    fn op_8xy7() {}
+
+    /// 8xyE - SHL Vx {, Vy}  
+    /// Set Vx = Vx << 1.
+    fn op_8xyE() {}
+
+    /// 9xy0 - SNE Vx, Vy  
+    /// Skip next instruction if Vx != Vy.
+    fn op_9xy0() {}
+
+    /// Annn - LD I, addr  
+    /// Set I = nnn.
+    fn op_Annn() {}
+
+    /// Bnnn - JP V0, addr  
+    /// Jump to location nnn + V0.
+    fn op_Bnnn() {}
+
+    /// Cxkk - RND Vx, byte  
+    /// Set Vx = random byte AND kk.
+    fn op_Cxkk() {}
+
+    /// Dxyn - DRW Vx, Vy, nibble  
+    /// Display n-byte sprite at (Vx, Vy), set VF = collision.
+    fn op_Dxyn() {}
+
+    /// Ex9E - SKP Vx  
+    /// Skip next instruction if key with the value of Vx is pressed.
+    fn op_Ex9E() {}
+
+    /// ExA1 - SKNP Vx  
+    /// Skip next instruction if key with the value of Vx is not pressed.
+    fn op_ExA1() {}
+
+    /// Fx07 - LD Vx, DT  
+    /// Set Vx = delay timer value.
+    fn op_Fx07() {}
+
+    /// Fx0A - LD Vx, K  
+    /// Wait for a key press, store the value of the key in Vx.
+    fn op_Fx0A() {}
+
+    /// Fx15 - LD DT, Vx  
+    /// Set delay timer = Vx.
+    fn op_Fx15() {}
+
+    /// Fx18 - LD ST, Vx  
+    /// Set sound timer = Vx.
+    fn op_Fx18() {}
+
+    /// Fx1E - ADD I, Vx  
+    /// Set I = I + Vx.
+    fn op_Fx1E() {}
+
+    /// Fx29 - LD F, Vx  
+    /// Set I = location of sprite for digit Vx.
+    fn op_Fx29() {}
+
+    /// Fx33 - LD B, Vx  
+    /// Store BCD representation of Vx in memory locations I, I+1, and I+2.
+    fn op_Fx33() {}
+
+    /// Fx55 - LD [I], Vx  
+    /// Store registers V0 through Vx in memory starting at location I.
+    fn op_Fx55() {}
+
+    /// Fx65 - LD Vx, [I]  
+    /// Read registers V0 through Vx from memory starting at location I.
+    fn op_Fx65() {}
+}
