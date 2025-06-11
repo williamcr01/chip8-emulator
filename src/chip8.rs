@@ -105,7 +105,10 @@ impl Chip8 {
     /// 7xkk - ADD Vx, byte  
     /// Set Vx = Vx + kk.
     /// TODO: IBM
-    fn op_7xkk(&mut self, opcode: usize) {}
+    fn op_7xkk(&mut self, opcode: usize) {
+        self.v[(opcode & 0x0F00) >> 8] += opcode & 0x00FF;
+        pc += 2;
+    }
 
     /// 8xy0 - LD Vx, Vy  
     /// Set Vx = Vy.
