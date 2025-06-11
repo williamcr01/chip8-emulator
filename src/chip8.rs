@@ -56,7 +56,16 @@ impl Chip8 {
 
     /// 00E0 - CLS  
     /// Clear the display.
-    fn op_00E0() {}
+    /// TODO: IBM
+    fn op_00E0() {
+        for x in CHIP8_VIDEO_WIDTH {
+            for y in CHIP8_VIDEO_HEIGHT{
+                self.video[x][y] = 0;
+            }
+        }
+        self.video_draw = true;
+        self.pc += 2; // Next instrction
+    }
 
     /// 00EE - RET  
     /// Return from a subroutine.
@@ -64,6 +73,7 @@ impl Chip8 {
 
     /// 1nnn - JP addr  
     /// Jump to location nnn.
+    /// TODO: IBM
     fn op_1nnn() {}
 
     /// 2nnn - CALL addr  
@@ -84,10 +94,12 @@ impl Chip8 {
 
     /// 6xkk - LD Vx, byte  
     /// Set Vx = kk.
+    /// TODO: IBM
     fn op_6xkk() {}
 
     /// 7xkk - ADD Vx, byte  
     /// Set Vx = Vx + kk.
+    /// TODO: IBM
     fn op_7xkk() {}
 
     /// 8xy0 - LD Vx, Vy  
@@ -132,6 +144,7 @@ impl Chip8 {
 
     /// Annn - LD I, addr  
     /// Set I = nnn.
+    /// TODO: IBM
     fn op_Annn() {}
 
     /// Bnnn - JP V0, addr  
@@ -144,6 +157,7 @@ impl Chip8 {
 
     /// Dxyn - DRW Vx, Vy, nibble  
     /// Display n-byte sprite at (Vx, Vy), set VF = collision.
+    /// TODO: IBM
     fn op_Dxyn() {}
 
     /// Ex9E - SKP Vx  
