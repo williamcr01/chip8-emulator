@@ -169,7 +169,36 @@ impl Chip8 {
     /// Dxyn - DRW Vx, Vy, nibble  
     /// Display n-byte sprite at (Vx, Vy), set VF = collision.
     /// TODO: IBM
-    fn op_Dxyn(&mut self) {}
+    fn op_Dxyn(&mut self, opcode: usize) {
+        let n: usize = opcode & 0x000F;
+        let x: usize = (opcode & 0x0F00) >> 8;
+        let y: usize = (opcode & 0x00F0) >> 4;
+
+        let start_x = self.v[x] as usize;
+        let start_y = self.v[y] as usize;
+
+        self.v[0xF] = 0;
+
+        for y_offset in 0..n {
+            let sprite_byte = self.memory[(self.i as usize) + y_offset];
+            let current_y = (start_y + y_offset) % CHIP8_VIDEO_HEIGHT;
+
+            for x_offset in 0..8 {
+                let current_x = (start_x + x_offset) % CHIP8_VIDEO_WIDTH;
+                
+                // Check if the current bit of the sprite_byte is set
+                if (sprite_byte & (0x80 >> x_offset)) != 0 {
+                    if self.video[current_y][current_x] == 1 {
+                        self.v[0xF] = 1;
+                    }
+                    // XOR the pixel
+                    self.video[current_y][current_x] ^= 1;
+                }
+            }
+        }
+        self.video_draw = true; // Signal that the screen needs to be redrawn
+        self.pc += 2;
+    }
 
     /// Ex9E - SKP Vx  
     /// Skip next instruction if key with the value of Vx is pressed.
