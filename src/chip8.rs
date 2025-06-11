@@ -153,7 +153,10 @@ impl Chip8 {
     /// Annn - LD I, addr  
     /// Set I = nnn.
     /// TODO: IBM
-    fn op_Annn(&mut self) {}
+    fn op_Annn(&mut self, opcode: usize) {
+        self.i = opcode & 0x0FFF;
+        self.pc += 2;
+    }
 
     /// Bnnn - JP V0, addr  
     /// Jump to location nnn + V0.
