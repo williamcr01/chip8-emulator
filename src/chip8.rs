@@ -28,7 +28,7 @@ pub struct Chip8 {
 }
 
 impl Chip8 {
-    fn new(&mut self) -> Result<Chip8, String> {
+    fn new() -> Result<Chip8, String> {
         let mut chip8 = Chip8 {
             video: [[0; CHIP8_VIDEO_WIDTH]; CHIP8_VIDEO_HEIGHT],
             video_draw: false,
@@ -50,6 +50,64 @@ impl Chip8 {
         Ok(chip8)
     }
 
+    fn gen_opcode(&mut self) -> u16 {
+        if self.pc as usize + 1 >= CHIP8_MEMORY {
+            return 0; // Prevent overflow
+        }
+        let high_byte = self.memory[self.pc as usize];
+        let low_byte = self.memory[(self.pc + 1) as usize];
+        let opcode = ((high_byte as usize) << 8) | (low_byte as usize);
+        opcode as u16
+    }
+
+    fn run_opcode(&mut self, opcode: usize) {
+        let bytes = (
+            (opcode & 0xF000) >> 12 as u8,
+            (opcode & 0x0F00) >> 8 as u8,
+            (opcode & 0x00F0) >> 4 as u8,
+            (opcode & 0x000F) as u8,
+        );
+
+        match bytes {
+            (0x00, 0x00, 0x00, 0x00) => self.op_0nnn(),
+            (0x00, 0x00, 0x0e, 0x00) => self.op_00E0(),
+            (0x00, 0x00, 0x0e, 0x0e) => self.op_00EE(),
+            (0x01, _, _, _) => self.op_1nnn(opcode),
+            (0x02, _, _, _) => self.op_2nnn(),
+            (0x03, _, _, _) => self.op_3xkk(),
+            (0x04, _, _, _) => self.op_4xkk(),
+            (0x05, _, _, 0x00) => self.op_5xy0(),
+            (0x06, _, _, _) => self.op_6xkk(opcode),
+            (0x07, _, _, _) => self.op_7xkk(opcode),
+            (0x08, _, _, 0x00) => self.op_8xy0(),
+            (0x08, _, _, 0x01) => self.op_8xy1(),
+            (0x08, _, _, 0x02) => self.op_8xy2(),
+            (0x08, _, _, 0x03) => self.op_8xy3(),
+            (0x08, _, _, 0x04) => self.op_8xy4(),
+            (0x08, _, _, 0x05) => self.op_8xy5(),
+            (0x08, _, _, 0x06) => self.op_8x06(),
+            (0x08, _, _, 0x07) => self.op_8xy7(),
+            (0x08, _, _, 0x0e) => self.op_8x0e(),
+            (0x09, _, _, 0x00) => self.op_9xy0(),
+            (0x0a, _, _, _) => self.op_Annn(opcode),
+            (0x0b, _, _, _) => self.op_Bnnn(),
+            (0x0c, _, _, _) => self.op_Cxkk(),
+            (0x0d, _, _, _) => self.op_Dxyn(opcode),
+            (0x0e, _, 0x09, 0x0e) => self.op_Ex9E(),
+            (0x0e, _, 0x0a, 0x01) => self.op_ExA1(),
+            (0x0f, _, 0x00, 0x07) => self.op_Fx07(),
+            (0x0f, _, 0x00, 0x0a) => self.op_Fx0a(),
+            (0x0f, _, 0x01, 0x05) => self.op_Fx15(),
+            (0x0f, _, 0x01, 0x08) => self.op_Fx18(),
+            (0x0f, _, 0x01, 0x0e) => self.op_Fx1e(),
+            (0x0f, _, 0x02, 0x09) => self.op_Fx29(),
+            (0x0f, _, 0x03, 0x03) => self.op_Fx33(),
+            (0x0f, _, 0x05, 0x05) => self.op_Fx55(),
+            (0x0f, _, 0x06, 0x05) => self.op_Fx65(),
+            _ => self.pc += 2,
+        };
+    }
+
     /// 0nnn - SYS addr  
     /// Jump to a machine code routine at nnn (ignored by modern interpreters).
     fn op_0nnn(&mut self) {}
@@ -59,7 +117,7 @@ impl Chip8 {
     /// TODO: IBM
     fn op_00E0(&mut self) {
         for x in CHIP8_VIDEO_WIDTH {
-            for y in CHIP8_VIDEO_HEIGHT{
+            for y in CHIP8_VIDEO_HEIGHT {
                 self.video[x][y] = 0;
             }
         }
@@ -99,7 +157,7 @@ impl Chip8 {
     /// TODO: IBM
     fn op_6xkk(&mut self, opcode: usize) {
         self.v[(opcode & 0x0F00) >> 8] = opcode & 0x00FF;
-        pc += 2;
+        self.pc += 2;
     }
 
     /// 7xkk - ADD Vx, byte  
@@ -107,7 +165,7 @@ impl Chip8 {
     /// TODO: IBM
     fn op_7xkk(&mut self, opcode: usize) {
         self.v[(opcode & 0x0F00) >> 8] += opcode & 0x00FF;
-        pc += 2;
+        self.pc += 2;
     }
 
     /// 8xy0 - LD Vx, Vy  
@@ -185,18 +243,16 @@ impl Chip8 {
 
             for x_offset in 0..8 {
                 let current_x = (start_x + x_offset) % CHIP8_VIDEO_WIDTH;
-                
-                // Check if the current bit of the sprite_byte is set
+
                 if (sprite_byte & (0x80 >> x_offset)) != 0 {
                     if self.video[current_y][current_x] == 1 {
                         self.v[0xF] = 1;
                     }
-                    // XOR the pixel
                     self.video[current_y][current_x] ^= 1;
                 }
             }
         }
-        self.video_draw = true; // Signal that the screen needs to be redrawn
+        self.video_draw = true;
         self.pc += 2;
     }
 
