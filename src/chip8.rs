@@ -60,11 +60,11 @@ impl Chip8 {
         opcode as u16
     }
 
-    fn run_opcode(&mut self, opcode: usize) {
+    fn run_opcode(&mut self, opcode: u16) {
         let bytes = (
-            (opcode & 0xF000) >> 12 as u8,
-            (opcode & 0x0F00) >> 8 as u8,
-            (opcode & 0x00F0) >> 4 as u8,
+            ((opcode & 0xF000) >> 12) as u8,
+            ((opcode & 0x0F00) >> 8) as u8,
+            ((opcode & 0x00F0) >> 4) as u8,
             (opcode & 0x000F) as u8,
         );
 
@@ -85,9 +85,9 @@ impl Chip8 {
             (0x08, _, _, 0x03) => self.op_8xy3(),
             (0x08, _, _, 0x04) => self.op_8xy4(),
             (0x08, _, _, 0x05) => self.op_8xy5(),
-            (0x08, _, _, 0x06) => self.op_8x06(),
+            (0x08, _, _, 0x06) => self.op_8xy6(),
             (0x08, _, _, 0x07) => self.op_8xy7(),
-            (0x08, _, _, 0x0e) => self.op_8x0e(),
+            (0x08, _, _, 0x0e) => self.op_8xyE(),
             (0x09, _, _, 0x00) => self.op_9xy0(),
             (0x0a, _, _, _) => self.op_Annn(opcode),
             (0x0b, _, _, _) => self.op_Bnnn(),
@@ -96,10 +96,10 @@ impl Chip8 {
             (0x0e, _, 0x09, 0x0e) => self.op_Ex9E(),
             (0x0e, _, 0x0a, 0x01) => self.op_ExA1(),
             (0x0f, _, 0x00, 0x07) => self.op_Fx07(),
-            (0x0f, _, 0x00, 0x0a) => self.op_Fx0a(),
+            (0x0f, _, 0x00, 0x0a) => self.op_Fx0A(),
             (0x0f, _, 0x01, 0x05) => self.op_Fx15(),
             (0x0f, _, 0x01, 0x08) => self.op_Fx18(),
-            (0x0f, _, 0x01, 0x0e) => self.op_Fx1e(),
+            (0x0f, _, 0x01, 0x0e) => self.op_Fx1E(),
             (0x0f, _, 0x02, 0x09) => self.op_Fx29(),
             (0x0f, _, 0x03, 0x03) => self.op_Fx33(),
             (0x0f, _, 0x05, 0x05) => self.op_Fx55(),
@@ -108,16 +108,16 @@ impl Chip8 {
         };
     }
 
-    /// 0nnn - SYS addr  
+    /// 0nnn - SYS addr
     /// Jump to a machine code routine at nnn (ignored by modern interpreters).
     fn op_0nnn(&mut self) {}
 
-    /// 00E0 - CLS  
+    /// 00E0 - CLS
     /// Clear the display.
-    /// TODO: IBM
+    /// TODO: IBM ROM
     fn op_00E0(&mut self) {
-        for x in CHIP8_VIDEO_WIDTH {
-            for y in CHIP8_VIDEO_HEIGHT {
+        for x in 0..CHIP8_VIDEO_WIDTH {
+            for y in 0..CHIP8_VIDEO_HEIGHT {
                 self.video[x][y] = 0;
             }
         }
@@ -125,112 +125,112 @@ impl Chip8 {
         self.pc += 2; // Next instrction
     }
 
-    /// 00EE - RET  
+    /// 00EE - RET
     /// Return from a subroutine.
     fn op_00EE(&mut self) {}
 
-    /// 1nnn - JP addr  
+    /// 1nnn - JP addr
     /// Jump to location nnn.
-    /// TODO: IBM
-    fn op_1nnn(&mut self, opcode: usize) {
+    /// TODO: IBM rom
+    fn op_1nnn(&mut self, opcode: u16) {
         self.pc = opcode & 0x0FFF;
     }
 
-    /// 2nnn - CALL addr  
+    /// 2nnn - CALL addr
     /// Call subroutine at nnn.
     fn op_2nnn(&mut self) {}
 
-    /// 3xkk - SE Vx, byte  
+    /// 3xkk - SE Vx, byte
     /// Skip next instruction if Vx == kk.
     fn op_3xkk(&mut self) {}
 
-    /// 4xkk - SNE Vx, byte  
+    /// 4xkk - SNE Vx, byte
     /// Skip next instruction if Vx != kk.
     fn op_4xkk(&mut self) {}
 
-    /// 5xy0 - SE Vx, Vy  
+    /// 5xy0 - SE Vx, Vy
     /// Skip next instruction if Vx == Vy.
     fn op_5xy0(&mut self) {}
 
-    /// 6xkk - LD Vx, byte  
+    /// 6xkk - LD Vx, byte
     /// Set Vx = kk.
-    /// TODO: IBM
-    fn op_6xkk(&mut self, opcode: usize) {
-        self.v[(opcode & 0x0F00) >> 8] = opcode & 0x00FF;
+    /// TODO: IBM ROM
+    fn op_6xkk(&mut self, opcode: u16) {
+        self.v[((opcode & 0x0F00) >> 8) as usize] = (opcode & 0x00FF) as u8;
         self.pc += 2;
     }
 
-    /// 7xkk - ADD Vx, byte  
+    /// 7xkk - ADD Vx, byte
     /// Set Vx = Vx + kk.
-    /// TODO: IBM
-    fn op_7xkk(&mut self, opcode: usize) {
-        self.v[(opcode & 0x0F00) >> 8] += opcode & 0x00FF;
+    /// TODO: IBM ROM
+    fn op_7xkk(&mut self, opcode: u16) {
+        self.v[((opcode & 0x0F00) >> 8) as usize] += (opcode & 0x00FF) as u8;
         self.pc += 2;
     }
 
-    /// 8xy0 - LD Vx, Vy  
+    /// 8xy0 - LD Vx, Vy
     /// Set Vx = Vy.
     fn op_8xy0(&mut self) {}
 
-    /// 8xy1 - OR Vx, Vy  
+    /// 8xy1 - OR Vx, Vy
     /// Set Vx = Vx OR Vy.
     fn op_8xy1(&mut self) {}
 
-    /// 8xy2 - AND Vx, Vy  
+    /// 8xy2 - AND Vx, Vy
     /// Set Vx = Vx AND Vy.
     fn op_8xy2(&mut self) {}
 
-    /// 8xy3 - XOR Vx, Vy  
+    /// 8xy3 - XOR Vx, Vy
     /// Set Vx = Vx XOR Vy.
     fn op_8xy3(&mut self) {}
 
-    /// 8xy4 - ADD Vx, Vy  
+    /// 8xy4 - ADD Vx, Vy
     /// Set Vx = Vx + Vy, set VF = carry.
     fn op_8xy4(&mut self) {}
 
-    /// 8xy5 - SUB Vx, Vy  
+    /// 8xy5 - SUB Vx, Vy
     /// Set Vx = Vx - Vy, set VF = NOT borrow.
     fn op_8xy5(&mut self) {}
 
-    /// 8xy6 - SHR Vx {, Vy}  
+    /// 8xy6 - SHR Vx {, Vy}
     /// Set Vx = Vx >> 1.
     fn op_8xy6(&mut self) {}
 
-    /// 8xy7 - SUBN Vx, Vy  
+    /// 8xy7 - SUBN Vx, Vy
     /// Set Vx = Vy - Vx, set VF = NOT borrow.
     fn op_8xy7(&mut self) {}
 
-    /// 8xyE - SHL Vx {, Vy}  
+    /// 8xyE - SHL Vx {, Vy}
     /// Set Vx = Vx << 1.
     fn op_8xyE(&mut self) {}
 
-    /// 9xy0 - SNE Vx, Vy  
+    /// 9xy0 - SNE Vx, Vy
     /// Skip next instruction if Vx != Vy.
     fn op_9xy0(&mut self) {}
 
-    /// Annn - LD I, addr  
+    /// Annn - LD I, addr
     /// Set I = nnn.
-    /// TODO: IBM
-    fn op_Annn(&mut self, opcode: usize) {
+    /// TODO: IBM ROM
+    fn op_Annn(&mut self, opcode: u16) {
         self.i = opcode & 0x0FFF;
         self.pc += 2;
     }
 
-    /// Bnnn - JP V0, addr  
+    /// Bnnn - JP V0, addr
     /// Jump to location nnn + V0.
     fn op_Bnnn(&mut self) {}
 
-    /// Cxkk - RND Vx, byte  
+    /// Cxkk - RND Vx, byte
     /// Set Vx = random byte AND kk.
     fn op_Cxkk(&mut self) {}
 
-    /// Dxyn - DRW Vx, Vy, nibble  
+    /// Dxyn - DRW Vx, Vy, nibble
     /// Display n-byte sprite at (Vx, Vy), set VF = collision.
-    /// TODO: IBM
-    fn op_Dxyn(&mut self, opcode: usize) {
-        let n: usize = opcode & 0x000F;
-        let x: usize = (opcode & 0x0F00) >> 8;
-        let y: usize = (opcode & 0x00F0) >> 4;
+    /// TODO: IBM ROM
+    fn op_Dxyn(&mut self, opcode: u16) {
+        let n: usize = (opcode & 0x000F) as usize;
+        let x: usize = ((opcode & 0x0F00) >> 8) as usize;
+        let y: usize = ((opcode & 0x00F0) >> 4) as usize;
 
         let start_x = self.v[x] as usize;
         let start_y = self.v[y] as usize;
@@ -256,47 +256,47 @@ impl Chip8 {
         self.pc += 2;
     }
 
-    /// Ex9E - SKP Vx  
+    /// Ex9E - SKP Vx
     /// Skip next instruction if key with the value of Vx is pressed.
     fn op_Ex9E(&mut self) {}
 
-    /// ExA1 - SKNP Vx  
+    /// ExA1 - SKNP Vx
     /// Skip next instruction if key with the value of Vx is not pressed.
     fn op_ExA1(&mut self) {}
 
-    /// Fx07 - LD Vx, DT  
+    /// Fx07 - LD Vx, DT
     /// Set Vx = delay timer value.
     fn op_Fx07(&mut self) {}
 
-    /// Fx0A - LD Vx, K  
+    /// Fx0A - LD Vx, K
     /// Wait for a key press, store the value of the key in Vx.
     fn op_Fx0A(&mut self) {}
 
-    /// Fx15 - LD DT, Vx  
+    /// Fx15 - LD DT, Vx
     /// Set delay timer = Vx.
     fn op_Fx15(&mut self) {}
 
-    /// Fx18 - LD ST, Vx  
+    /// Fx18 - LD ST, Vx
     /// Set sound timer = Vx.
     fn op_Fx18(&mut self) {}
 
-    /// Fx1E - ADD I, Vx  
+    /// Fx1E - ADD I, Vx
     /// Set I = I + Vx.
     fn op_Fx1E(&mut self) {}
 
-    /// Fx29 - LD F, Vx  
+    /// Fx29 - LD F, Vx
     /// Set I = location of sprite for digit Vx.
     fn op_Fx29(&mut self) {}
 
-    /// Fx33 - LD B, Vx  
+    /// Fx33 - LD B, Vx
     /// Store BCD representation of Vx in memory locations I, I+1, and I+2.
     fn op_Fx33(&mut self) {}
 
-    /// Fx55 - LD [I], Vx  
+    /// Fx55 - LD [I], Vx
     /// Store registers V0 through Vx in memory starting at location I.
     fn op_Fx55(&mut self) {}
 
-    /// Fx65 - LD Vx, [I]  
+    /// Fx65 - LD Vx, [I]
     /// Read registers V0 through Vx from memory starting at location I.
     fn op_Fx65(&mut self) {}
 }
