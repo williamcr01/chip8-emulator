@@ -28,7 +28,7 @@ pub struct Chip8 {
 }
 
 impl Chip8 {
-    fn new() -> Result<Chip8, String> {
+    pub fn new() -> Chip8 {
         let mut chip8 = Chip8 {
             video: [[0; CHIP8_VIDEO_WIDTH]; CHIP8_VIDEO_HEIGHT],
             video_draw: false,
@@ -36,7 +36,7 @@ impl Chip8 {
             stack: [0; STACK_HEIGHT],
             v: [0; REGISTERS_V],
             i: 0,
-            pc: 0,
+            pc: 0x200, // Programs start at memory location 0x200
             sp: 0,
             dt: 0,
             st: 0,
@@ -44,10 +44,25 @@ impl Chip8 {
         };
 
         for i in 0..FONTSET.len() {
-            chip8.memory[i] = FONTSET[0];
+            chip8.memory[i] = FONTSET[i];
         }
 
-        Ok(chip8)
+        return chip8;
+    }
+
+    pub fn load_rom(&mut self, rom: &[u8]) -> Result<(), String> {
+        if rom.len() > CHIP8_MEMORY - 0x200 {
+            return Err("ROM too large".to_string());
+        }
+        for (i, &byte) in rom.iter().enumerate() {
+            self.memory[0x200 + i] = byte;
+        }
+        Ok(())
+    }
+
+    pub fn cycle(&mut self) {
+        let opcode = self.gen_opcode();
+        self.run_opcode(opcode);
     }
 
     fn gen_opcode(&mut self) -> u16 {
@@ -57,7 +72,7 @@ impl Chip8 {
         let high_byte = self.memory[self.pc as usize];
         let low_byte = self.memory[(self.pc + 1) as usize];
         let opcode = ((high_byte as usize) << 8) | (low_byte as usize);
-        opcode as u16
+        return opcode as u16;
     }
 
     fn run_opcode(&mut self, opcode: u16) {
