@@ -1,9 +1,4 @@
-const CHIP8_MEMORY: usize = 4096;
-const CHIP8_VIDEO_WIDTH: usize = 64;
-const CHIP8_VIDEO_HEIGHT: usize = 32;
-const STACK_HEIGHT: usize = 16;
-const REGISTERS_V: usize = 16;
-const KEYPAD_SIZE: usize = 16;
+use crate::constants::*;
 
 const FONTSET: [u8; 80] = [
     0xF0, 0x90, 0x90, 0x90, 0xF0, 0x20, 0x60, 0x20, 0x20, 0x70, 0xF0, 0x10, 0xF0, 0x80, 0xF0, 0xF0,
@@ -28,7 +23,7 @@ pub struct Chip8 {
 }
 
 impl Chip8 {
-    pub fn new() -> Chip8 {
+    pub fn new() -> Result<Chip8, String> {
         let mut chip8 = Chip8 {
             video: [[0; CHIP8_VIDEO_WIDTH]; CHIP8_VIDEO_HEIGHT],
             video_draw: false,
@@ -47,7 +42,7 @@ impl Chip8 {
             chip8.memory[i] = FONTSET[i];
         }
 
-        return chip8;
+        Ok(chip8)
     }
 
     pub fn load_rom(&mut self, rom: &[u8]) -> Result<(), String> {
