@@ -8,6 +8,11 @@ const FONTSET: [u8; 80] = [
     0xF0, 0xE0, 0x90, 0x90, 0x90, 0xE0, 0xF0, 0x80, 0xF0, 0x80, 0xF0, 0xF0, 0x80, 0xF0, 0x80, 0x80,
 ];
 
+pub struct Chip8_State<'a> {
+    pub video: &'a [[u8; CHIP8_VIDEO_WIDTH]; CHIP8_VIDEO_HEIGHT],
+    pub video_draw: bool,
+}
+
 pub struct Chip8 {
     video: [[u8; CHIP8_VIDEO_WIDTH]; CHIP8_VIDEO_HEIGHT], // VRAM
     video_draw: bool,                                     // Redraw frame
@@ -55,9 +60,14 @@ impl Chip8 {
         Ok(())
     }
 
-    pub fn cycle(&mut self) {
+    pub fn cycle(&mut self) -> Chip8_State{
         let opcode = self.gen_opcode();
         self.run_opcode(opcode);
+        
+        Chip8_State {
+            video: &self.video,
+            video_draw: self.video_draw,
+        }
     }
 
     fn gen_opcode(&mut self) -> u16 {
@@ -124,11 +134,10 @@ impl Chip8 {
 
     /// 00E0 - CLS
     /// Clear the display.
-    /// TODO: IBM ROM
     fn op_00E0(&mut self) {
         for x in 0..CHIP8_VIDEO_WIDTH {
             for y in 0..CHIP8_VIDEO_HEIGHT {
-                self.video[x][y] = 0;
+                self.video[y][x] = 0;
             }
         }
         self.video_draw = true;
@@ -141,7 +150,6 @@ impl Chip8 {
 
     /// 1nnn - JP addr
     /// Jump to location nnn.
-    /// TODO: IBM rom
     fn op_1nnn(&mut self, opcode: u16) {
         self.pc = opcode & 0x0FFF;
     }
@@ -164,7 +172,6 @@ impl Chip8 {
 
     /// 6xkk - LD Vx, byte
     /// Set Vx = kk.
-    /// TODO: IBM ROM
     fn op_6xkk(&mut self, opcode: u16) {
         self.v[((opcode & 0x0F00) >> 8) as usize] = (opcode & 0x00FF) as u8;
         self.pc += 2;
@@ -172,7 +179,6 @@ impl Chip8 {
 
     /// 7xkk - ADD Vx, byte
     /// Set Vx = Vx + kk.
-    /// TODO: IBM ROM
     fn op_7xkk(&mut self, opcode: u16) {
         self.v[((opcode & 0x0F00) >> 8) as usize] += (opcode & 0x00FF) as u8;
         self.pc += 2;
@@ -220,7 +226,6 @@ impl Chip8 {
 
     /// Annn - LD I, addr
     /// Set I = nnn.
-    /// TODO: IBM ROM
     fn op_Annn(&mut self, opcode: u16) {
         self.i = opcode & 0x0FFF;
         self.pc += 2;
@@ -236,7 +241,6 @@ impl Chip8 {
 
     /// Dxyn - DRW Vx, Vy, nibble
     /// Display n-byte sprite at (Vx, Vy), set VF = collision.
-    /// TODO: IBM ROM
     fn op_Dxyn(&mut self, opcode: u16) {
         let n: usize = (opcode & 0x000F) as usize;
         let x: usize = ((opcode & 0x0F00) >> 8) as usize;

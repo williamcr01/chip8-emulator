@@ -32,15 +32,25 @@ impl DisplayDriver {
         })
     }
 
-    pub fn draw_pixel(&mut self, x: usize, y: usize) {
-        self.canvas.set_draw_color(Color::WHITE);
-        let rect = Rect::new(
-            (x as u32 * self.scale) as i32,
-            (y as u32 * self.scale) as i32,
-            self.scale,
-            self.scale,
-        );
-        let _ = self.canvas.fill_rect(rect);
+    pub fn draw_screen(&mut self, vram: &[[u8; CHIP8_VIDEO_WIDTH]; CHIP8_VIDEO_HEIGHT]) {
+        for (y, row) in vram.iter().enumerate() {
+            for (x, &pixel_value) in row.iter().enumerate() {
+                let x_size = (x * VIDEO_SCALE) as u32;
+                let y_size = (y * VIDEO_SCALE) as u32;
+                
+                if pixel_value == 0 {
+                    self.canvas.set_draw_color(Color::BLACK);
+                } else {
+                    self.canvas.set_draw_color(Color::WHITE);
+                }
+                let _ = self.canvas.fill_rect(Rect::new(
+                    x_size as i32,
+                    y_size as i32,
+                    VIDEO_SCALE as u32,
+                    VIDEO_SCALE as u32,
+                ));
+            }
+        }
         self.present();
     }
 
