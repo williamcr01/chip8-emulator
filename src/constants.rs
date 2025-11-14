@@ -6,3 +6,8 @@ pub const REGISTERS_V: usize = 16;
 pub const KEYPAD_SIZE: usize = 16;
 
 pub const VIDEO_SCALE: usize = 10;
+
+// Timing constants
+pub const CPU_HZ: u32 = 500; // CPU cycles per second
+pub const TIMER_HZ: u32 = 60; // Timer ticks per second
+pub const CYCLES_PER_TIMER_TICK: u32 = CPU_HZ / TIMER_HZ; // ~11-12 cycles per timer tick

@@ -51,6 +51,10 @@ fn main() {
 
     let mut event_pump = sdl2_context.event_pump().unwrap();
 
+    let cycle_duration = std::time::Duration::from_nanos(1_000_000_000 / CPU_HZ as u64);
+    let mut last_cycle_time = std::time::Instant::now();
+    let mut cycles_since_timer_update = 0;
+
     loop {
         for event in event_pump.poll_iter() {
             match event {
@@ -77,13 +81,23 @@ fn main() {
         }
 
         let state = cpu.cycle();
-        //println!("Drew: {}", state.video_draw);
 
         if state.video_draw {
             display_driver.draw_screen(state.video);
         }
 
-        // Simple delay to control speed
-        std::thread::sleep(std::time::Duration::from_millis(2));
+        // Update timers at 60Hz
+        cycles_since_timer_update += 1;
+        if cycles_since_timer_update >= CYCLES_PER_TIMER_TICK {
+            cpu.update_timers();
+            cycles_since_timer_update = 0;
+        }
+
+        // Maintain consistent timing
+        let elapsed = last_cycle_time.elapsed();
+        if elapsed < cycle_duration {
+            std::thread::sleep(cycle_duration - elapsed);
+        }
+        last_cycle_time = std::time::Instant::now();
     }
 }

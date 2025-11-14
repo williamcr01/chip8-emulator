@@ -73,16 +73,18 @@ impl Chip8 {
         let should_draw = self.video_draw;
         self.video_draw = false;
 
-        if self.dt > 0 {
-            self.dt -= 1
-        }
-        if self.st > 0 {
-            self.st -= 1
-        }
-
         Chip8State {
             video: &self.video,
             video_draw: should_draw,
+        }
+    }
+
+    pub fn update_timers(&mut self) {
+        if self.dt > 0 {
+            self.dt -= 1;
+        }
+        if self.st > 0 {
+            self.st -= 1;
         }
     }
 
