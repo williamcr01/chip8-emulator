@@ -77,7 +77,7 @@ fn main() {
         }
 
         let state = cpu.cycle();
-        println!("Drew: {}", state.video_draw);
+        //println!("Drew: {}", state.video_draw);
 
         if state.video_draw {
             display_driver.draw_screen(state.video);
