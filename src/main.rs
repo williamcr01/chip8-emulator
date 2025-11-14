@@ -1,8 +1,10 @@
+extern crate rand;
 extern crate sdl2;
 
 mod chip8;
 mod constants;
 mod display_driver;
+mod keyboard_driver;
 
 pub use constants::*;
 
@@ -41,28 +43,46 @@ fn main() {
     let sdl2_context = sdl2::init().expect("Failed to initialize SDL2");
 
     let rom = Rom::new(rom_name).expect("Failed to load ROM");
-    let mut display_driver = DisplayDriver::new(&sdl2_context)
-        .expect("Failed to initialize display driver");
+    let mut display_driver =
+        DisplayDriver::new(&sdl2_context).expect("Failed to initialize display driver");
     let mut cpu = Chip8::new().expect("Failed to initialize CHIP-8");
-    
+
     cpu.load_rom(&rom.rom).expect("Could not load rom");
-    
+
     let mut event_pump = sdl2_context.event_pump().unwrap();
-    
+
     loop {
         for event in event_pump.poll_iter() {
             match event {
                 sdl2::event::Event::Quit { .. } => return,
+
+                sdl2::event::Event::KeyDown {
+                    keycode: Some(keycode),
+                    ..
+                } => {
+                    if let Some(key) = keyboard_driver::KeyboardDriver::to_chip8_key(keycode) {
+                        cpu.set_key(key as u8, true);
+                    }
+                }
+                sdl2::event::Event::KeyUp {
+                    keycode: Some(keycode),
+                    ..
+                } => {
+                    if let Some(key) = keyboard_driver::KeyboardDriver::to_chip8_key(keycode) {
+                        cpu.set_key(key as u8, false);
+                    }
+                }
                 _ => {}
             }
         }
-        
+
         let state = cpu.cycle();
-        
+        println!("Drew: {}", state.video_draw);
+
         if state.video_draw {
             display_driver.draw_screen(state.video);
         }
-        
+
         // Simple delay to control speed
         std::thread::sleep(std::time::Duration::from_millis(2));
     }

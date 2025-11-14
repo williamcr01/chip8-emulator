@@ -1,3 +1,5 @@
+use rand::Rng;
+
 use crate::constants::*;
 
 const FONTSET: [u8; 80] = [
@@ -8,7 +10,7 @@ const FONTSET: [u8; 80] = [
     0xF0, 0xE0, 0x90, 0x90, 0x90, 0xE0, 0xF0, 0x80, 0xF0, 0x80, 0xF0, 0xF0, 0x80, 0xF0, 0x80, 0x80,
 ];
 
-pub struct Chip8_State<'a> {
+pub struct Chip8State<'a> {
     pub video: &'a [[u8; CHIP8_VIDEO_WIDTH]; CHIP8_VIDEO_HEIGHT],
     pub video_draw: bool,
 }
@@ -50,6 +52,10 @@ impl Chip8 {
         Ok(chip8)
     }
 
+    pub fn set_key(&mut self, key: u8, pressed: bool) {
+        self.keypad[key as usize] = pressed;
+    }
+
     pub fn load_rom(&mut self, rom: &[u8]) -> Result<(), String> {
         if rom.len() > CHIP8_MEMORY - 0x200 {
             return Err("ROM too large".to_string());
@@ -60,11 +66,21 @@ impl Chip8 {
         Ok(())
     }
 
-    pub fn cycle(&mut self) -> Chip8_State{
+    pub fn cycle(&mut self) -> Chip8State {
         let opcode = self.gen_opcode();
         self.run_opcode(opcode);
-        
-        Chip8_State {
+
+        //let should_draw = self.video_draw;
+        //self.video_draw = false;
+
+        if self.dt > 0 {
+            self.dt -= 1
+        }
+        if self.st > 0 {
+            self.st -= 1
+        }
+
+        Chip8State {
             video: &self.video,
             video_draw: self.video_draw,
         }
@@ -90,51 +106,53 @@ impl Chip8 {
 
         match bytes {
             (0x00, 0x00, 0x00, 0x00) => self.op_0nnn(),
-            (0x00, 0x00, 0x0e, 0x00) => self.op_00E0(),
-            (0x00, 0x00, 0x0e, 0x0e) => self.op_00EE(),
+            (0x00, 0x00, 0x0e, 0x00) => self.op_00e0(),
+            (0x00, 0x00, 0x0e, 0x0e) => self.op_00ee(),
             (0x01, _, _, _) => self.op_1nnn(opcode),
-            (0x02, _, _, _) => self.op_2nnn(),
-            (0x03, _, _, _) => self.op_3xkk(),
-            (0x04, _, _, _) => self.op_4xkk(),
-            (0x05, _, _, 0x00) => self.op_5xy0(),
+            (0x02, _, _, _) => self.op_2nnn(opcode),
+            (0x03, _, _, _) => self.op_3xkk(opcode),
+            (0x04, _, _, _) => self.op_4xkk(opcode),
+            (0x05, _, _, 0x00) => self.op_5xy0(opcode),
             (0x06, _, _, _) => self.op_6xkk(opcode),
             (0x07, _, _, _) => self.op_7xkk(opcode),
-            (0x08, _, _, 0x00) => self.op_8xy0(),
-            (0x08, _, _, 0x01) => self.op_8xy1(),
-            (0x08, _, _, 0x02) => self.op_8xy2(),
+            (0x08, _, _, 0x00) => self.op_8xy0(opcode),
+            (0x08, _, _, 0x01) => self.op_8xy1(opcode),
+            (0x08, _, _, 0x02) => self.op_8xy2(opcode),
             (0x08, _, _, 0x03) => self.op_8xy3(),
-            (0x08, _, _, 0x04) => self.op_8xy4(),
-            (0x08, _, _, 0x05) => self.op_8xy5(),
+            (0x08, _, _, 0x04) => self.op_8xy4(opcode),
+            (0x08, _, _, 0x05) => self.op_8xy5(opcode),
             (0x08, _, _, 0x06) => self.op_8xy6(),
             (0x08, _, _, 0x07) => self.op_8xy7(),
-            (0x08, _, _, 0x0e) => self.op_8xyE(),
+            (0x08, _, _, 0x0e) => self.op_8xye(),
             (0x09, _, _, 0x00) => self.op_9xy0(),
-            (0x0a, _, _, _) => self.op_Annn(opcode),
-            (0x0b, _, _, _) => self.op_Bnnn(),
-            (0x0c, _, _, _) => self.op_Cxkk(),
-            (0x0d, _, _, _) => self.op_Dxyn(opcode),
-            (0x0e, _, 0x09, 0x0e) => self.op_Ex9E(),
-            (0x0e, _, 0x0a, 0x01) => self.op_ExA1(),
-            (0x0f, _, 0x00, 0x07) => self.op_Fx07(),
-            (0x0f, _, 0x00, 0x0a) => self.op_Fx0A(),
-            (0x0f, _, 0x01, 0x05) => self.op_Fx15(),
-            (0x0f, _, 0x01, 0x08) => self.op_Fx18(),
-            (0x0f, _, 0x01, 0x0e) => self.op_Fx1E(),
-            (0x0f, _, 0x02, 0x09) => self.op_Fx29(),
-            (0x0f, _, 0x03, 0x03) => self.op_Fx33(),
-            (0x0f, _, 0x05, 0x05) => self.op_Fx55(),
-            (0x0f, _, 0x06, 0x05) => self.op_Fx65(),
+            (0x0a, _, _, _) => self.op_annn(opcode),
+            (0x0b, _, _, _) => self.op_bnnn(),
+            (0x0c, _, _, _) => self.op_cxkk(opcode),
+            (0x0d, _, _, _) => self.op_dxyn(opcode),
+            (0x0e, _, 0x09, 0x0e) => self.op_ex9e(opcode),
+            (0x0e, _, 0x0a, 0x01) => self.op_exa1(opcode),
+            (0x0f, _, 0x00, 0x07) => self.op_fx07(opcode),
+            (0x0f, _, 0x00, 0x0a) => self.op_fx0a(),
+            (0x0f, _, 0x01, 0x05) => self.op_fx15(opcode),
+            (0x0f, _, 0x01, 0x08) => self.op_fx18(opcode),
+            (0x0f, _, 0x01, 0x0e) => self.op_fx1e(),
+            (0x0f, _, 0x02, 0x09) => self.op_fx29(),
+            (0x0f, _, 0x03, 0x03) => self.op_fx33(),
+            (0x0f, _, 0x05, 0x05) => self.op_fx55(),
+            (0x0f, _, 0x06, 0x05) => self.op_fx65(),
             _ => self.pc += 2,
         };
     }
 
     /// 0nnn - SYS addr
     /// Jump to a machine code routine at nnn (ignored by modern interpreters).
-    fn op_0nnn(&mut self) {}
+    fn op_0nnn(&mut self) {
+        self.pc += 2;
+    }
 
     /// 00E0 - CLS
     /// Clear the display.
-    fn op_00E0(&mut self) {
+    fn op_00e0(&mut self) {
         for x in 0..CHIP8_VIDEO_WIDTH {
             for y in 0..CHIP8_VIDEO_HEIGHT {
                 self.video[y][x] = 0;
@@ -146,7 +164,11 @@ impl Chip8 {
 
     /// 00EE - RET
     /// Return from a subroutine.
-    fn op_00EE(&mut self) {}
+    fn op_00ee(&mut self) {
+        self.pc = self.stack[self.sp as usize];
+        self.sp -= 1;
+        self.pc += 2;
+    }
 
     /// 1nnn - JP addr
     /// Jump to location nnn.
@@ -156,19 +178,50 @@ impl Chip8 {
 
     /// 2nnn - CALL addr
     /// Call subroutine at nnn.
-    fn op_2nnn(&mut self) {}
+    fn op_2nnn(&mut self, opcode: u16) {
+        self.sp += 1;
+        self.stack[self.sp as usize] = self.pc + 2;
+        self.pc = opcode & 0x0FFF;
+    }
 
     /// 3xkk - SE Vx, byte
     /// Skip next instruction if Vx == kk.
-    fn op_3xkk(&mut self) {}
+    fn op_3xkk(&mut self, opcode: u16) {
+        let x: usize = ((opcode & 0x0F00) >> 8) as usize;
+        let kk: u8 = (opcode & 0x00FF) as u8;
+
+        if self.v[x] == kk {
+            self.pc += 4; // Skip
+        } else {
+            self.pc += 2; // Next
+        }
+    }
 
     /// 4xkk - SNE Vx, byte
     /// Skip next instruction if Vx != kk.
-    fn op_4xkk(&mut self) {}
+    fn op_4xkk(&mut self, opcode: u16) {
+        let x: usize = ((opcode & 0x0F00) >> 8) as usize;
+        let kk: u8 = (opcode & 0x00FF) as u8;
+
+        if self.v[x] != kk {
+            self.pc += 4;
+        } else {
+            self.pc += 2;
+        }
+    }
 
     /// 5xy0 - SE Vx, Vy
     /// Skip next instruction if Vx == Vy.
-    fn op_5xy0(&mut self) {}
+    fn op_5xy0(&mut self, opcode: u16) {
+        let x: usize = ((opcode & 0x0F00) >> 8) as usize;
+        let y: usize = ((opcode & 0x00F0) >> 4) as usize;
+
+        if self.v[x] == self.v[y] {
+            self.pc += 4;
+        } else {
+            self.pc += 2;
+        }
+    }
 
     /// 6xkk - LD Vx, byte
     /// Set Vx = kk.
@@ -180,68 +233,135 @@ impl Chip8 {
     /// 7xkk - ADD Vx, byte
     /// Set Vx = Vx + kk.
     fn op_7xkk(&mut self, opcode: u16) {
-        self.v[((opcode & 0x0F00) >> 8) as usize] += (opcode & 0x00FF) as u8;
+        let x = ((opcode & 0x0F00) >> 8) as usize;
+        let kk = (opcode & 0x00FF) as u8;
+        self.v[x] = self.v[x].wrapping_add(kk);
         self.pc += 2;
     }
 
     /// 8xy0 - LD Vx, Vy
     /// Set Vx = Vy.
-    fn op_8xy0(&mut self) {}
+    fn op_8xy0(&mut self, opcode: u16) {
+        let x: usize = ((opcode & 0x0F00) >> 8) as usize;
+        let y: usize = ((opcode & 0x00F0) >> 4) as usize;
+
+        self.v[x] = self.v[y];
+        self.pc += 2;
+    }
 
     /// 8xy1 - OR Vx, Vy
     /// Set Vx = Vx OR Vy.
-    fn op_8xy1(&mut self) {}
+    fn op_8xy1(&mut self, opcode: u16) {
+        let x: usize = ((opcode & 0x0F00) >> 8) as usize;
+        let y: usize = ((opcode & 0x00F0) >> 4) as usize;
+
+        self.v[x] |= self.v[y];
+        self.pc += 2;
+    }
 
     /// 8xy2 - AND Vx, Vy
     /// Set Vx = Vx AND Vy.
-    fn op_8xy2(&mut self) {}
+    fn op_8xy2(&mut self, opcode: u16) {
+        let x: usize = ((opcode & 0x0F00) >> 8) as usize;
+        let y: usize = ((opcode & 0x00F0) >> 4) as usize;
+
+        self.v[x] &= self.v[y];
+        self.pc += 2;
+    }
 
     /// 8xy3 - XOR Vx, Vy
     /// Set Vx = Vx XOR Vy.
-    fn op_8xy3(&mut self) {}
+    fn op_8xy3(&mut self) {
+        self.pc += 2;
+    }
 
     /// 8xy4 - ADD Vx, Vy
     /// Set Vx = Vx + Vy, set VF = carry.
-    fn op_8xy4(&mut self) {}
+    fn op_8xy4(&mut self, opcode: u16) {
+        let x: usize = ((opcode & 0x0F00) >> 8) as usize;
+        let y: usize = ((opcode & 0x00F0) >> 4) as usize;
+
+        let sum = self.v[x] as u16 + self.v[y] as u16;
+
+        if sum > 255 {
+            self.v[0xF] = 1;
+        } else {
+            self.v[0xF] = 0;
+        }
+
+        self.v[x] = sum as u8;
+        self.pc += 2;
+    }
 
     /// 8xy5 - SUB Vx, Vy
     /// Set Vx = Vx - Vy, set VF = NOT borrow.
-    fn op_8xy5(&mut self) {}
+    fn op_8xy5(&mut self, opcode: u16) {
+        let x: usize = ((opcode & 0x0F00) >> 8) as usize;
+        let y: usize = ((opcode & 0x00F0) >> 4) as usize;
+
+        if self.v[x] >= self.v[y] {
+            self.v[0xF] = 1;
+        } else {
+            self.v[0xF] = 0;
+        }
+
+        self.v[x] = self.v[x].wrapping_sub(self.v[y]);
+        self.pc += 2;
+    }
 
     /// 8xy6 - SHR Vx {, Vy}
     /// Set Vx = Vx >> 1.
-    fn op_8xy6(&mut self) {}
+    fn op_8xy6(&mut self) {
+        self.pc += 2;
+    }
 
     /// 8xy7 - SUBN Vx, Vy
     /// Set Vx = Vy - Vx, set VF = NOT borrow.
-    fn op_8xy7(&mut self) {}
+    fn op_8xy7(&mut self) {
+        self.pc += 2;
+    }
 
     /// 8xyE - SHL Vx {, Vy}
     /// Set Vx = Vx << 1.
-    fn op_8xyE(&mut self) {}
+    fn op_8xye(&mut self) {
+        self.pc += 2;
+    }
 
     /// 9xy0 - SNE Vx, Vy
     /// Skip next instruction if Vx != Vy.
-    fn op_9xy0(&mut self) {}
+    fn op_9xy0(&mut self) {
+        self.pc += 2;
+    }
 
     /// Annn - LD I, addr
     /// Set I = nnn.
-    fn op_Annn(&mut self, opcode: u16) {
+    fn op_annn(&mut self, opcode: u16) {
         self.i = opcode & 0x0FFF;
         self.pc += 2;
     }
 
     /// Bnnn - JP V0, addr
     /// Jump to location nnn + V0.
-    fn op_Bnnn(&mut self) {}
+    fn op_bnnn(&mut self) {
+        self.pc += 2;
+    }
 
     /// Cxkk - RND Vx, byte
     /// Set Vx = random byte AND kk.
-    fn op_Cxkk(&mut self) {}
+    fn op_cxkk(&mut self, opcode: u16) {
+        let x: usize = ((opcode & 0x0F00) >> 8) as usize;
+        let kk: u8 = (opcode & 0x00FF) as u8;
+
+        let mut rng = rand::rng();
+        let random_byte: u8 = rng.random::<u8>();
+
+        self.v[x] = random_byte & kk;
+        self.pc += 2;
+    }
 
     /// Dxyn - DRW Vx, Vy, nibble
     /// Display n-byte sprite at (Vx, Vy), set VF = collision.
-    fn op_Dxyn(&mut self, opcode: u16) {
+    fn op_dxyn(&mut self, opcode: u16) {
         let n: usize = (opcode & 0x000F) as usize;
         let x: usize = ((opcode & 0x0F00) >> 8) as usize;
         let y: usize = ((opcode & 0x00F0) >> 4) as usize;
@@ -272,45 +392,87 @@ impl Chip8 {
 
     /// Ex9E - SKP Vx
     /// Skip next instruction if key with the value of Vx is pressed.
-    fn op_Ex9E(&mut self) {}
+    fn op_ex9e(&mut self, opcode: u16) {
+        let x: usize = ((opcode & 0x0F00) >> 8) as usize;
+        let key = self.v[x] as usize;
+
+        if self.keypad[key] {
+            self.pc += 4;
+        } else {
+            self.pc += 2;
+        }
+    }
 
     /// ExA1 - SKNP Vx
     /// Skip next instruction if key with the value of Vx is not pressed.
-    fn op_ExA1(&mut self) {}
+    fn op_exa1(&mut self, opcode: u16) {
+        let x: usize = ((opcode & 0x0F00) >> 8) as usize;
+        let key = self.v[x] as usize;
+
+        if !self.keypad[key] {
+            self.pc += 4;
+        } else {
+            self.pc += 2;
+        }
+    }
 
     /// Fx07 - LD Vx, DT
     /// Set Vx = delay timer value.
-    fn op_Fx07(&mut self) {}
+    fn op_fx07(&mut self, opcode: u16) {
+        let x: usize = ((opcode & 0x0F00) >> 8) as usize;
+        self.v[x] = self.dt;
+        self.pc += 2;
+    }
 
     /// Fx0A - LD Vx, K
     /// Wait for a key press, store the value of the key in Vx.
-    fn op_Fx0A(&mut self) {}
+    fn op_fx0a(&mut self) {
+        self.pc += 2;
+    }
 
     /// Fx15 - LD DT, Vx
     /// Set delay timer = Vx.
-    fn op_Fx15(&mut self) {}
+    fn op_fx15(&mut self, opcode: u16) {
+        let x: usize = ((opcode & 0x0F00) >> 8) as usize;
+        self.dt = self.v[x];
+        self.pc += 2;
+    }
 
     /// Fx18 - LD ST, Vx
     /// Set sound timer = Vx.
-    fn op_Fx18(&mut self) {}
+    fn op_fx18(&mut self, opcode: u16) {
+        let x: usize = ((opcode & 0x0F00) >> 8) as usize;
+        self.st = self.v[x];
+        self.pc += 2;
+    }
 
     /// Fx1E - ADD I, Vx
     /// Set I = I + Vx.
-    fn op_Fx1E(&mut self) {}
+    fn op_fx1e(&mut self) {
+        self.pc += 2;
+    }
 
     /// Fx29 - LD F, Vx
     /// Set I = location of sprite for digit Vx.
-    fn op_Fx29(&mut self) {}
+    fn op_fx29(&mut self) {
+        self.pc += 2;
+    }
 
     /// Fx33 - LD B, Vx
     /// Store BCD representation of Vx in memory locations I, I+1, and I+2.
-    fn op_Fx33(&mut self) {}
+    fn op_fx33(&mut self) {
+        self.pc += 2;
+    }
 
     /// Fx55 - LD [I], Vx
     /// Store registers V0 through Vx in memory starting at location I.
-    fn op_Fx55(&mut self) {}
+    fn op_fx55(&mut self) {
+        self.pc += 2;
+    }
 
     /// Fx65 - LD Vx, [I]
     /// Read registers V0 through Vx from memory starting at location I.
-    fn op_Fx65(&mut self) {}
+    fn op_fx65(&mut self) {
+        self.pc += 2;
+    }
 }
