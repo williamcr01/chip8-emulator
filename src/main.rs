@@ -26,7 +26,6 @@ impl Rom {
         let mut buffer = [0u8; 3584];
 
         let rom_size = f.read(&mut buffer).map_err(|e| e.to_string())?;
-        println!("Loaded ROM of size: {} bytes", rom_size);
 
         Ok(Rom {
             rom: buffer,
@@ -43,6 +42,7 @@ fn main() {
     let sdl2_context = sdl2::init().expect("Failed to initialize SDL2");
 
     let rom = Rom::new(rom_name).expect("Failed to load ROM");
+    println!("Loaded ROM of size: {} bytes", rom.size);
     let mut display_driver =
         DisplayDriver::new(&sdl2_context).expect("Failed to initialize display driver");
     let mut cpu = Chip8::new().expect("Failed to initialize CHIP-8");
