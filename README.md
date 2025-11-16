@@ -4,6 +4,10 @@ A CHIP-8 emulator written in Rust using SDL2 for graphics and input.
 
 ![Pong running on the emulator](img/pong.png)
 
+## Dependencies
+- Rust
+- SDL2
+
 ## Building
 
 With rust installed run:
