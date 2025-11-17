@@ -257,8 +257,12 @@ impl Chip8 {
     fn op_8xy1(&mut self, opcode: u16) {
         let x: usize = ((opcode & 0x0F00) >> 8) as usize;
         let y: usize = ((opcode & 0x00F0) >> 4) as usize;
+        
+        let vx = self.v[x];
+        let vy = self.v[y];
 
-        self.v[x] |= self.v[y];
+        self.v[x] = vx | vy;
+        self.v[0xF] = 0;
         self.pc += 2;
     }
 
@@ -268,7 +272,11 @@ impl Chip8 {
         let x: usize = ((opcode & 0x0F00) >> 8) as usize;
         let y: usize = ((opcode & 0x00F0) >> 4) as usize;
 
-        self.v[x] &= self.v[y];
+        let vx = self.v[x];
+        let vy = self.v[y];
+        
+        self.v[x] = vx & vy;
+        self.v[0xF] = 0;
         self.pc += 2;
     }
 
@@ -277,7 +285,12 @@ impl Chip8 {
     fn op_8xy3(&mut self, opcode: u16) {
         let x: usize = ((opcode & 0x0F00) >> 8) as usize;
         let y: usize = ((opcode & 0x00F0) >> 4) as usize;
-        self.v[x] ^= self.v[y];
+
+        let vx = self.v[x];
+        let vy = self.v[y];
+        
+        self.v[x] = vx ^ vy;
+        self.v[0xF] = 0;
         self.pc += 2;
     }
 
@@ -287,15 +300,14 @@ impl Chip8 {
         let x: usize = ((opcode & 0x0F00) >> 8) as usize;
         let y: usize = ((opcode & 0x00F0) >> 4) as usize;
 
-        let sum = self.v[x] as u16 + self.v[y] as u16;
+        let vx = self.v[x];
+        let vy = self.v[y];
 
-        if sum > 255 {
-            self.v[0xF] = 1;
-        } else {
-            self.v[0xF] = 0;
-        }
+        let sum = vx as u16 + vy as u16;
 
         self.v[x] = sum as u8;
+        self.v[0xF] = if sum > 255 { 1 } else { 0 };
+
         self.pc += 2;
     }
 
@@ -305,13 +317,12 @@ impl Chip8 {
         let x: usize = ((opcode & 0x0F00) >> 8) as usize;
         let y: usize = ((opcode & 0x00F0) >> 4) as usize;
 
-        if self.v[x] >= self.v[y] {
-            self.v[0xF] = 1;
-        } else {
-            self.v[0xF] = 0;
-        }
+        let vx = self.v[x];
+        let vy = self.v[y];
 
-        self.v[x] = self.v[x].wrapping_sub(self.v[y]);
+        self.v[x] = vx.wrapping_sub(vy);
+        self.v[0xF] = if vx >= vy { 1 } else { 0 };
+
         self.pc += 2;
     }
 
@@ -319,9 +330,14 @@ impl Chip8 {
     /// Set Vx = Vx >> 1.
     fn op_8xy6(&mut self, opcode: u16) {
         let x: usize = ((opcode & 0x0F00) >> 8) as usize;
+        let y: usize = ((opcode & 0x00F0) >> 4) as usize;
 
-        self.v[0xF] = self.v[x] & 0x1;
-        self.v[x] >>= 1;
+        let vx = self.v[x];
+        let vy = self.v[y];
+        
+        self.v[x] = vy;
+        self.v[x] = vx >> 1;
+        self.v[0xF] = vx & 0x1;
         self.pc += 2;
     }
 
@@ -331,13 +347,12 @@ impl Chip8 {
         let x: usize = ((opcode & 0x0F00) >> 8) as usize;
         let y: usize = ((opcode & 0x00F0) >> 4) as usize;
 
-        if self.v[y] >= self.v[x] {
-            self.v[0xF] = 1;
-        } else {
-            self.v[0xF] = 0;
-        }
+        let vx = self.v[x];
+        let vy = self.v[y];
 
-        self.v[x] = self.v[y].wrapping_sub(self.v[x]);
+        self.v[x] = vy.wrapping_sub(vx);
+        self.v[0xF] = if vy >= vx { 1 } else { 0 };
+
         self.pc += 2;
     }
 
@@ -345,9 +360,14 @@ impl Chip8 {
     /// Set Vx = Vx << 1.
     fn op_8xye(&mut self, opcode: u16) {
         let x: usize = ((opcode & 0x0F00) >> 8) as usize;
-
-        self.v[0xF] = (self.v[x] & 0x80) >> 7;
-        self.v[x] <<= 1;
+        let y: usize = ((opcode & 0x00F0) >> 4) as usize;
+        
+        let vx = self.v[x];
+        let vy = self.v[y];
+        
+        self.v[x] = vy;
+        self.v[x] = vx << 1;
+        self.v[0xF] = (vx & 0x80) >> 7;
         self.pc += 2;
     }
 

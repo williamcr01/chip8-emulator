@@ -40,7 +40,11 @@ CHIP-8 Keypad:       Keyboard Mapping:
 7 8 9 E              A S D F
 A 0 B F              Z X C V
 ```
+
+## Tests
+Emulator is tested against [Timendus test suite](https://github.com/Timendus/chip8-test-suite)
+![Corax+ test](img/corax+_passed.png)
+![Flags test passed](img/flags_passed.png)
+
 ## Not implemented
-- Does not pass the flags test by [Timendus](https://github.com/Timendus/chip8-test-suite)
-![Flags test](img/flags.png)
 - No sound

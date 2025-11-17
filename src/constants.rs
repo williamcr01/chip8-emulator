@@ -5,7 +5,7 @@ pub const STACK_HEIGHT: usize = 16;
 pub const REGISTERS_V: usize = 16;
 pub const KEYPAD_SIZE: usize = 16;
 
-pub const VIDEO_SCALE: usize = 10;
+pub const VIDEO_SCALE: usize = 20;
 
 // Timing constants
 pub const CPU_HZ: u32 = 500; // CPU cycles per second
