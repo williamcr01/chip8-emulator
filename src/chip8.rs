@@ -257,7 +257,7 @@ impl Chip8 {
     fn op_8xy1(&mut self, opcode: u16) {
         let x: usize = ((opcode & 0x0F00) >> 8) as usize;
         let y: usize = ((opcode & 0x00F0) >> 4) as usize;
-        
+
         let vx = self.v[x];
         let vy = self.v[y];
 
@@ -274,7 +274,7 @@ impl Chip8 {
 
         let vx = self.v[x];
         let vy = self.v[y];
-        
+
         self.v[x] = vx & vy;
         self.v[0xF] = 0;
         self.pc += 2;
@@ -288,7 +288,7 @@ impl Chip8 {
 
         let vx = self.v[x];
         let vy = self.v[y];
-        
+
         self.v[x] = vx ^ vy;
         self.v[0xF] = 0;
         self.pc += 2;
@@ -361,10 +361,10 @@ impl Chip8 {
     fn op_8xye(&mut self, opcode: u16) {
         let x: usize = ((opcode & 0x0F00) >> 8) as usize;
         let y: usize = ((opcode & 0x00F0) >> 4) as usize;
-        
+
         let vx = self.v[x];
         let vy = self.v[y];
-        
+
         self.v[x] = vy;
         self.v[x] = vx << 1;
         self.v[0xF] = (vx & 0x80) >> 7;
@@ -417,17 +417,28 @@ impl Chip8 {
         let x: usize = ((opcode & 0x0F00) >> 8) as usize;
         let y: usize = ((opcode & 0x00F0) >> 4) as usize;
 
-        let start_x = self.v[x] as usize;
-        let start_y = self.v[y] as usize;
+        let start_x = (self.v[x] as usize) % CHIP8_VIDEO_WIDTH;
+        let start_y = (self.v[y] as usize) % CHIP8_VIDEO_HEIGHT;
 
         self.v[0xF] = 0;
 
         for y_offset in 0..n {
+            let current_y = start_y + y_offset;
+
+            // Clip at bottom edge
+            if current_y >= CHIP8_VIDEO_HEIGHT {
+                break;
+            }
+
             let sprite_byte = self.memory[(self.i as usize) + y_offset];
-            let current_y = (start_y + y_offset) % CHIP8_VIDEO_HEIGHT;
 
             for x_offset in 0..8 {
-                let current_x = (start_x + x_offset) % CHIP8_VIDEO_WIDTH;
+                let current_x = start_x + x_offset;
+
+                // Clip at right edge
+                if current_x >= CHIP8_VIDEO_WIDTH {
+                    break;
+                }
 
                 if (sprite_byte & (0x80 >> x_offset)) != 0 {
                     if self.video[current_y][current_x] == 1 {
@@ -545,7 +556,7 @@ impl Chip8 {
         }
 
         self.i += (x as u16) + 1;
-        
+
         self.pc += 2;
     }
 
@@ -557,7 +568,7 @@ impl Chip8 {
         for register_index in 0..=x {
             self.v[register_index] = self.memory[(self.i as usize) + register_index];
         }
-        
+
         self.i += (x as u16) + 1;
 
         self.pc += 2;
