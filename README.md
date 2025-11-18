@@ -44,7 +44,13 @@ A 0 B F              Z X C V
 ## Tests
 Emulator is tested against [Timendus test suite](https://github.com/Timendus/chip8-test-suite)
 ![Corax+ test](img/corax+_passed.png)
+Corax+ test
+
 ![Flags test passed](img/flags_passed.png)
+Flags test
+
+![Quirks test passed](img/quirks_passed.png)
+Quirks test
 
 ## Not implemented
 - No sound
