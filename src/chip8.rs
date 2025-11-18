@@ -336,7 +336,7 @@ impl Chip8 {
         let vy = self.v[y];
         
         self.v[x] = vy;
-        self.v[x] = vx >> 1;
+        self.v[x] = self.v[x] >> 1;
         self.v[0xF] = vx & 0x1;
         self.pc += 2;
     }
@@ -366,7 +366,7 @@ impl Chip8 {
         let vy = self.v[y];
 
         self.v[x] = vy;
-        self.v[x] = vx << 1;
+        self.v[x] = self.v[x] << 1;
         self.v[0xF] = (vx & 0x80) >> 7;
         self.pc += 2;
     }
