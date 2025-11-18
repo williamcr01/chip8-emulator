@@ -544,6 +544,8 @@ impl Chip8 {
             self.memory[(self.i as usize) + register_index] = self.v[register_index];
         }
 
+        self.i += (x as u16) + 1;
+        
         self.pc += 2;
     }
 
@@ -555,6 +557,8 @@ impl Chip8 {
         for register_index in 0..=x {
             self.v[register_index] = self.memory[(self.i as usize) + register_index];
         }
+        
+        self.i += (x as u16) + 1;
 
         self.pc += 2;
     }
